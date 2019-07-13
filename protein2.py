@@ -162,12 +162,13 @@ x_test = x_test.reshape(len(train_index),*new_img_dim,rbg_dim)
 del(stack)
 
 print(mult_proteins)
-print('PCA Dimension: {} --- {} % reduction in rows'.format(
-  new_img_dim, (1-(np.multiply(*new_img_dim)/(img_dim**2)))*100))
+perc_reduced = (1-(np.multiply(*new_img_dim)/(img_dim**2)))*100
+print('PCA Dimension: {} --- {} % compression'.format(
+  new_img_dim, round(perc_reduced, 2)))
 # print('Avg Variance Explained: {} %'.format(np.mean(test_pca[1]*100)))
 # print('Variance Range: {} - {} %'.format(np.min(test_pca[1])*100,np.max(test_pca[1])*100))
 print()
-
+sys.exit()
 #--------------------------------------------------------------------------------------
 # create model
 #--------------------------------------------------------------------------------------
