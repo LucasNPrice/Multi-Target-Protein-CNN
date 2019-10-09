@@ -2,6 +2,7 @@ import numpy as np
 import os
 from collections import Counter
 import cv2
+import matplotlib.pyplot as plt
 
 import imageProcessor as imp
 import lossFuns
@@ -11,11 +12,12 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from keras import optimizers
 from keras.models import Sequential
-from keras.layers import Conv2D, Activation, Flatten, Dense, MaxPooling2D, Dropout
+from keras.layers import Conv2D, Activation, Flatten, Dense, MaxPooling2D, Dropout, BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 
 from sklearn.metrics import multilabel_confusion_matrix
 from keras.constraints import maxnorm
+
 
 class Train_on_Batch():
 
@@ -28,12 +30,14 @@ class Train_on_Batch():
 
     self.batchsize = batchsize
     self.train_test_split(train_val_test)
+    self.img_dim = cv2.imread(self.imgPath + '/' + self.img_files[0]).shape
     self.compile_model()
 
     self.aug = ImageDataGenerator(rotation_range = 20, zoom_range = 0.15, 
       width_shift_range = 0.2, height_shift_range = 0.2, 
       shear_range = 0.15, horizontal_flip = True, 
       fill_mode = 'nearest')
+
 
   def train_test_split(self, train_val_test):
     # get unique proteins in data 
@@ -94,6 +98,7 @@ class Train_on_Batch():
     print('Validation Images: {}'.format(len(self.IDs['validation'])))
     print('Testing Images: {}'.format(len(self.IDs['test'])))
 
+
   def data_generator(self, data, mode = 'train', aug = None):
 
     file_extension = '_green.png'
@@ -106,13 +111,11 @@ class Train_on_Batch():
           img = imp.Image_Processor(images)
           img.greyscale()
           img.normalize()
-          img.getSVD(n_components = 192)
-          img.transpose()
-          img.getSVD(n_components = 191)
-          img.transpose()
+          img.resize(x_perc = 0.4, y_perc = 0.4)
+          self.img_dim = img.img_dim
           images = img.images
           images = np.array(images).reshape(len(targets),*img.img_dim,1)
-          # if the data augmentation object is not None, apply it
+
           if aug is not None:
             (images, targets) = next(aug.flow(images,
               targets, batch_size = self.batchsize))
@@ -134,37 +137,40 @@ class Train_on_Batch():
         images.append(image)
         targets.append(target)
 
+
   def compile_model(self):
 
     optimizer = optimizers.Adam(lr=0.0005)
-
     self.model = Sequential()
-    self.model.add(Conv2D(input_shape = (192, 191, 1),
+
+    self.model.add(Conv2D(input_shape = (204, 204, 1),
       filters = 64, 
-      kernel_size = 3,
+      kernel_size = 7,
       activation = 'relu'))
+    self.model.add(BatchNormalization())
     self.model.add(MaxPooling2D(pool_size=(2, 2)))
     self.model.add(Dropout(0.2))
 
     self.model.add(Conv2D(filters = 128, 
       kernel_size = 3,
       activation = 'relu'))
-    self.model.add(MaxPooling2D(pool_size=(2, 2)))
-    self.model.add(Dropout(0.2))
+    self.model.add(BatchNormalization())
 
     self.model.add(Conv2D(filters = 256, 
       kernel_size = 3,
       activation = 'relu'))
+    self.model.add(BatchNormalization())
     self.model.add(MaxPooling2D(pool_size=(2, 2)))
     self.model.add(Dropout(0.2))
 
     self.model.add(Flatten())
-    self.model.add(Dense(int(512), activation = 'relu', kernel_constraint = maxnorm(3)))
+    self.model.add(Dense(int(204), activation = 'relu', kernel_constraint = maxnorm(3)))
     self.model.add(Dense(len(self.protein_set), activation = 'sigmoid'))
 
     self.model.compile(optimizer = optimizer, 
-      loss = lossFuns.f1_loss, 
-      metrics = ['accuracy', lossFuns.f1])
+      loss=[lossFuns.KerasFocalLoss], 
+      metrics = ['accuracy', lossFuns.f1, lossFuns.f1_new])
+
 
   def train_model(self, epochs):
       # initialize both the training and testing image generators
@@ -177,7 +183,9 @@ class Train_on_Batch():
         generator = train_generator,
         steps_per_epoch = len(self.IDs['train']) // self.batchsize,
         validation_data = validation_generator,
-        validation_steps = len(self.IDs['validation']) // self.batchsize)
+        validation_steps = len(self.IDs['validation']) // self.batchsize,
+        epochs = epochs)
+
 
   def predict(self):
 
@@ -186,6 +194,7 @@ class Train_on_Batch():
       mode = 'predict')
     self.predictions = self.model.predict_generator(test_generator, 
       steps = len(self.IDs['test']) // self.batchsize)
+
 
   def eval_predictions(self):
 
