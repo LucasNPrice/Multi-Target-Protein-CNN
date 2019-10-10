@@ -168,7 +168,7 @@ class Train_on_Batch():
     self.model.add(Dense(len(self.protein_set), activation = 'sigmoid'))
 
     self.model.compile(optimizer = optimizer, 
-      loss=[lossFuns.KerasFocalLoss], 
+      loss=[lossFuns.customFocalLoss], 
       metrics = ['accuracy', lossFuns.f1, lossFuns.f1_new])
 
 
