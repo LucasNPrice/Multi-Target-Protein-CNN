@@ -1,6 +1,6 @@
 # Multi-Target-Protein-CNN
 
-##Multi-target CNN for protein detection##
+## Multi-target CNN for protein detection ##
 
 Model trained via Focal Loss 
 - lossFuns.py - customFocalLoss()
