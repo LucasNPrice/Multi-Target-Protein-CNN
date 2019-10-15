@@ -2,8 +2,13 @@
 
 Multi-target CNN for protein detection. 
 
-train_on_batch.py contains framework and workflow for data preprocessing and network training and predicting. 
+Model trained via Focal Loss 
+- lossFuns.py - customFocalLoss()
 
-run.py for easy run.
+**train_on_batch.py**
+  - framework and workflow for data preprocessing and network training/predicting. 
 
-Training using custom Focal Loss ('customFocalLoss()' contained in lossFuns.py).
+**run.py**
+  - main script for easy run.
+
+
